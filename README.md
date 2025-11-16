@@ -169,6 +169,54 @@ npm run format       # Format code & sort Tailwind classes
 npm run format:check # Check formatting without changes
 ```
 
+## 🗺️ Application Routes
+
+The application includes the following pages:
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/` | **HomePage** | Landing page with search bar and card grid |
+| `/forms` | **FormPage** | Dynamic form builder using TanStack Form |
+| `/contact` | **ContactPage** | Contact form with validation (TanStack Form) |
+| `/drafts` | **DraftsPage** | Draft forms management and editing |
+| `/review` | **ReviewPage** | Form review and approval workflow |
+
+### Page Features
+
+#### 🏠 HomePage (`/`)
+- Search functionality with live results
+- Card grid displaying content
+- User profile navigation
+- Responsive design
+
+#### 📝 FormPage (`/forms`)
+- **Dynamic form builder** powered by TanStack Form
+- Add/remove form fields dynamically
+- Multiple field types (text, number, email, select, checkbox, textarea)
+- Form validation
+- Save and submit forms
+- Real-time form preview
+
+#### 📧 ContactPage (`/contact`)
+- **Full-featured contact form** with TanStack Form
+- Sync validation (required fields, min length)
+- Async validation (checks for forbidden words)
+- Success/error feedback
+- Form reset after submission
+- Accessible form fields with proper labels
+
+#### 📋 DraftsPage (`/drafts`)
+- View all draft forms
+- Edit draft forms
+- Delete drafts
+- Form status management
+
+#### ✅ ReviewPage (`/review`)
+- Review submitted forms
+- Approve/reject workflow
+- Form status tracking
+- Comments and feedback
+
 ## 📁 Project Structure
 
 ```
@@ -176,9 +224,13 @@ src/
 ├── app/                    # Application layer
 │   └── App.tsx            # Root component, routing setup
 │
+├── assets/                 # Static assets
+│   └── react.svg          # React logo
+│
 ├── pages/                  # Pages layer (routes)
 │   ├── HomePage.tsx       # Landing page with search and cards
-│   ├── FormPage.tsx       # Form builder page
+│   ├── FormPage.tsx       # Form builder page (TanStack Form)
+│   ├── ContactPage.tsx    # Contact form page (TanStack Form)
 │   ├── DraftsPage.tsx     # Draft forms management
 │   └── ReviewPage.tsx     # Form review and approval
 │
@@ -188,17 +240,38 @@ src/
 │   ├── CardGrid/          # Grid of cards
 │   └── SearchBar/         # Search with results
 │
-├── features/               # Features layer (user interactions)
-│   ├── card/              # Card feature types
-│   ├── search/            # Search functionality
-│   ├── form/              # Form management
-│   └── navbar/            # Navigation features
+├── features/               # Features layer (business logic)
+│   ├── auth/              # Authentication
+│   │   ├── model/         # Auth store (Zustand)
+│   │   └── index.ts       # Barrel export
+│   ├── cart/              # Shopping cart
+│   │   ├── model/         # Cart store (Zustand)
+│   │   ├── types.ts       # Cart types
+│   │   └── index.ts       # Barrel export
+│   ├── form/              # Contact form (TanStack Form)
+│   │   ├── model/         # Form submission store
+│   │   ├── ui/            # ContactForm component
+│   │   ├── types.ts       # ContactFormData, SubmissionStatus
+│   │   └── index.ts       # Barrel export
+│   ├── formBuilder/       # Form builder (TanStack Form)
+│   │   ├── model/         # Form builder store
+│   │   ├── ui/            # FormBuilder component
+│   │   └── index.ts       # Barrel export
+│   └── search/            # Search functionality
+│       ├── model/         # Search store (Zustand)
+│       ├── types.ts       # Search types
+│       └── index.ts       # Barrel export
 │
-├── entities/               # Entities layer (business logic)
+├── entities/               # Entities layer (domain models)
 │   ├── user/
-│   │   └── types.ts       # User, UserRole, Privilege
-│   └── form/
-│       └── types.ts       # Form, FormStatus, FormField, FieldType
+│   │   ├── types.ts       # User, UserRole, Privilege
+│   │   └── index.ts       # Barrel export
+│   ├── form/
+│   │   ├── types.ts       # Form, FormStatus, FormField, FieldType
+│   │   └── index.ts       # Barrel export
+│   └── card/
+│       ├── types.ts       # Card, CardGridProps
+│       └── index.ts       # Barrel export
 │
 ├── shared/                 # Shared layer (infrastructure)
 │   ├── ui/                # UI components (shadcn/ui)
@@ -216,13 +289,22 @@ src/
 │   ├── hooks/             # Shared hooks
 │   │   ├── useAuth.ts
 │   │   └── useResponsive.ts
-│   └── api/               # API client setup
+│   ├── model/             # Global state
+│   │   ├── themeStore.ts  # Theme management (Zustand)
+│   │   └── index.ts       # Barrel export
+│   └── api/               # API client setup (TanStack Query)
 │
 ├── test/                   # Test configuration
-│   └── setup.ts           # Vitest setup
+│   └── setup.ts           # Vitest setup with Testing Library
 │
+├── types/                  # Global TypeScript definitions
+│   └── global.d.ts        # Global type declarations
+│
+├── index.css              # Global styles and Tailwind imports
 └── main.tsx               # Application entry point
 ```
+
+**Note:** Test files (`*.test.ts`, `*.test.tsx`) are co-located with their source files following best practices.
 
 ## 🎨 Feature-Sliced Design
 
@@ -272,15 +354,24 @@ import { Button } from '@/shared/ui/Button';  // directly in pages
 - Example: `NavbarWithProfile`, `FormsTable`
 
 #### 4. **features** - User Interactions
-- Specific user actions
-- Business logic for interactions
-- Example: `search`, `form submission`
+- Specific user actions and business logic
+- State management with Zustand
+- Form handling with TanStack Form
+- Examples:
+  - `auth` - Authentication and session management
+  - `cart` - Shopping cart state and actions
+  - `form` - Contact form with validation (TanStack Form)
+  - `formBuilder` - Dynamic form creation (TanStack Form)
+  - `search` - Search functionality and results
 
 #### 5. **entities** - Business Entities
-- Domain models
-- Business logic
+- Domain models (data structures)
 - Type definitions
-- Example: `User`, `Form`, `FormField`
+- **No business logic** - only data modeling
+- Examples:
+  - `user` - User, UserRole, Privilege types
+  - `form` - Form, FormField, FormStatus, FieldType
+  - `card` - Card, CardGridProps types
 
 #### 6. **shared** - Reusable Infrastructure
 - UI components (shadcn/ui)
@@ -301,12 +392,22 @@ import { Button } from '@/shared/ui/Button';  // directly in pages
 
 ### Test Coverage
 
-We maintain **comprehensive test coverage** across all layers:
+We maintain **comprehensive test coverage** across all layers with **89 passing tests**:
 
-- ✅ **UI Components** - Button, Typography, Card, Input
-- ✅ **Hooks** - useAuth, useResponsive
-- ✅ **Utilities** - cn, formatDate, debounce
-- ✅ **Integration Tests** - Coming soon
+#### Feature Tests
+- ✅ **Contact Form** (12 tests) - TanStack Form validation, submission, async validation
+- ✅ **Contact Form Store** (12 tests) - Zustand state management
+- ✅ **Auth Store** (10 tests) - Authentication state and actions
+- ✅ **Cart Store** (11 tests) - Shopping cart operations
+- ✅ **Search Store** (10 tests) - Search functionality
+- ✅ **Theme Store** (11 tests) - Theme switching
+
+#### Shared Tests
+- ✅ **UI Components** (11 tests) - Button, Typography components
+- ✅ **Hooks** (3 tests) - useAuth hook
+- ✅ **Utilities** (9 tests) - cn, formatDate, debounce, validation
+
+**Total: 89 tests passing** | **0 failures** | **100% success rate**
 
 ### Running Tests
 
@@ -354,13 +455,20 @@ describe('Button', () => {
 ### Test Results
 
 ```
-✓ src/shared/lib/utils.test.ts (9 tests)
+✓ src/features/form/ui/ContactForm.test.tsx (12 tests) 8.5s
+✓ src/features/form/model/contactFormStore.test.ts (12 tests) 5.0s
+✓ src/features/auth/model/authStore.test.ts (10 tests)
+✓ src/features/cart/model/cartStore.test.ts (11 tests)
+✓ src/features/search/model/searchStore.test.ts (10 tests)
+✓ src/shared/model/themeStore.test.ts (11 tests)
+✓ src/shared/ui/Button.test.tsx (6 tests)
 ✓ src/shared/ui/Typography.test.tsx (5 tests)
 ✓ src/shared/hooks/useAuth.test.ts (3 tests)
-✓ src/shared/ui/Button.test.tsx (6 tests)
+✓ src/shared/lib/utils.test.ts (9 tests)
 
-Test Files  4 passed (4)
-Tests  23 passed (23)
+Test Files  10 passed (10)
+Tests  89 passed (89)
+Duration  9.4s
 ```
 
 ## 🗄️ State Management with Zustand
@@ -371,10 +479,12 @@ This project uses **Zustand** for global state management following **Feature-Sl
 
 | Store | Location | Purpose |
 |-------|----------|---------|
-| **Cart** | `features/cart/model/` | Feature-owned shopping cart logic |
+| **Contact Form** | `features/form/model/` | Form submissions and status |
+| **Form Builder** | `features/formBuilder/model/` | Dynamic form creation and management |
+| **Cart** | `features/cart/model/` | Shopping cart state and operations |
 | **Auth** | `features/auth/model/` | Session, login, privileges, OIDC |
-| **Search** | `features/search/model/` | Search UI and business logic |
-| **Theme** | `shared/model/` | Global app appearance state |
+| **Search** | `features/search/model/` | Search functionality and results |
+| **Theme** | `shared/model/` | Global app appearance (dark/light mode) |
 
 ### Global Stores
 
@@ -946,4 +1056,3 @@ MIT License - feel free to use this project for learning and production.
 ---
 
 **Built with ❤️ using Feature-Sliced Design**
-```
