@@ -85,36 +85,41 @@ src/
     cart/
       model/                # Zustand store, actions, business logic
       ui/                   # Feature-specific UI and components
-      api/                  # API interactions just for this feature
+      types.ts              # Feature-specific types
+      index.ts              # Barrel export
     search/
       model/
       ui/
-      ...
+      types.ts
+      index.ts
     auth/
       model/
       ui/
-      ...
-  entities/                # Business entities (user, form, etc)
+      index.ts
+  entities/                # Business entities (user, form, product, etc)
     user/
-      model/
-      ui/
-      ...
+      types.ts              # User, UserRole, etc.
+      index.ts
     form/
-      ...
+      types.ts              # Form, FormField, etc.
+      index.ts
   widgets/                 # Smart UI composed from features/entities/shared
     CardGrid/
     NavbarWithProfile/
+    FormsTable/
   pages/                   # Route-level components (Home, FormPage, Review)
     HomePage.tsx
     FormPage.tsx
     ReviewPage.tsx
   shared/                  # Global UI, generic hooks, utils, theme, API
-    ui/                      # Custom Material Tailwind components, wrappers
-    hooks/                   # Utility hooks (e.g., useBoolean)
+    ui/                      # Generic UI components
+    hooks/                   # Utility hooks (e.g., useDebounce)
     lib/                     # Utility pure functions, helpers (e.g., formatDate)
     model/                   # Truly global state (e.g., themeStore)
-    api/                     # Shared API clients, TanStack Query configs
+    api/                     # Shared API clients, configs
 ```
+
+> **💡 This Project's Structure:** See the [Current Structure Validation](#current-structure-validation) section below for how this project implements FSD with real examples.
 
 ***
 
@@ -368,6 +373,12 @@ function CartDrawer() {
 }
 ```
 
+**💡 Real Example from This Project:**
+We have generic UI components in `shared/ui/` like `Button`, `Card`, `Input`, `Select` that are used across multiple features. For example:
+- `Button` is used in ContactForm, FormBuilder, CartDrawer, etc.
+- `Card` is used in HomePage, FormPage, and various widgets
+- These are truly generic and not tied to any specific business logic
+
 #### Scenario 3: "I want to add user profile editing"
 
 **What you need:**
@@ -393,6 +404,13 @@ entities/user/
 **Why this split?**
 - `User` type is an entity (used by auth, profile, forms)
 - Profile editing is a feature (specific business logic)
+
+**💡 Real Example from This Project:**
+We have a similar split with forms:
+- `entities/form/types.ts` - Generic Form, FormField, FormStatus types (used by multiple features)
+- `features/form/` - Contact form feature (specific implementation with TanStack Form)
+- `features/formBuilder/` - Form builder feature (different implementation, same entity)
+Both features use the same Form entity but implement different business logic
 
 #### Scenario 4: "I need a dashboard page with multiple widgets"
 
@@ -428,6 +446,26 @@ export function DashboardPage() {
 }
 ```
 
+**💡 Real Example from This Project:**
+Our `HomePage` follows this exact pattern:
+```typescript
+// pages/HomePage.tsx
+import { NavbarWithProfile } from '@/widgets/NavbarWithProfile';
+import { SearchBar } from '@/widgets/SearchBar';
+import { CardGrid } from '@/widgets/CardGrid';
+
+export function HomePage() {
+  return (
+    <div>
+      <NavbarWithProfile />  {/* Combines auth feature + UI */}
+      <SearchBar />          {/* Combines search feature + UI */}
+      <CardGrid />           {/* Displays card entities */}
+    </div>
+  );
+}
+```
+Each widget is self-contained and combines features/entities/shared components
+
 #### Scenario 5: "I need to format dates across the app"
 
 **Decision:**
@@ -444,6 +482,27 @@ export function formatDate(date: Date): string {
 // Import anywhere
 import { formatDate } from '@/shared/lib/formatDate';
 ```
+
+**💡 Real Example from This Project:**
+Our `shared/lib/utils.ts` contains truly generic utilities:
+```typescript
+// shared/lib/utils.ts
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));  // Tailwind class merging
+}
+
+export function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat('en-US').format(date);
+}
+
+export function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  // Generic debounce implementation
+}
+```
+These are used across auth, cart, search, and form features without any business logic
 
 ***
 
@@ -469,6 +528,13 @@ features/
 ├── auth/model/authStore.ts
 └── search/model/searchStore.ts
 ```
+
+**💡 This Project Does It Right:**
+We keep feature stores in their respective features:
+- `features/cart/model/cartStore.ts` - Cart business logic
+- `features/auth/model/authStore.ts` - Auth business logic
+- `features/form/model/contactFormStore.ts` - Form submission logic
+- `shared/model/themeStore.ts` - ONLY truly global theme state
 
 ### ❌ Mistake 2: Creating "utils" or "helpers" folders
 
@@ -652,6 +718,116 @@ features/cart/utils/formatDate.ts  // Should be in shared/lib/
 // 🚨 RED FLAG: Feature-specific UI in shared
 shared/ui/CartButton.tsx  // Should be in features/cart/ui/
 ```
+
+***
+
+## 🎯 Complete Real-World Example: Contact Form Flow
+
+Let's trace how the contact form feature works in this project to see FSD in action:
+
+### 1. **User visits `/contact` route**
+```typescript
+// app/App.tsx - Routing layer
+<Route element={<ContactPage />} path="/contact" />
+```
+
+### 2. **Page composes the feature**
+```typescript
+// pages/ContactPage.tsx - Page layer
+import { ContactForm } from '@/features/form';  // ← Barrel export
+import { NavbarWithProfile } from '@/widgets/NavbarWithProfile';
+
+export function ContactPage() {
+  return (
+    <div>
+      <NavbarWithProfile />  {/* Widget combining features */}
+      <ContactForm />        {/* Feature component */}
+    </div>
+  );
+}
+```
+
+### 3. **Feature owns its logic**
+```typescript
+// features/form/ui/ContactForm.tsx - Feature UI
+import { useForm } from '@tanstack/react-form';  // External lib
+import { useContactFormStore } from '../model';   // Feature store
+import { Button } from '@/shared/ui/Button';      // Shared UI
+import type { ContactFormData } from '../types';  // Feature types
+
+export function ContactForm() {
+  const { submitForm, status } = useContactFormStore();
+  
+  const form = useForm<ContactFormData>({
+    defaultValues: { firstName: '', lastName: '', email: '', age: 0, message: '' },
+    onSubmit: async ({ value }) => {
+      await submitForm(value);
+      form.reset();
+    },
+  });
+  
+  return (
+    <form onSubmit={form.handleSubmit}>
+      {/* Form fields using shared UI components */}
+      <Button type="submit">Submit</Button>
+    </form>
+  );
+}
+```
+
+### 4. **Feature store manages state**
+```typescript
+// features/form/model/contactFormStore.ts - Feature business logic
+import { create } from 'zustand';
+import type { ContactFormData, SubmissionStatus } from '../types';
+
+export const useContactFormStore = create<{
+  submissions: ContactFormData[];
+  status: SubmissionStatus;
+  submitForm: (data: ContactFormData) => Promise<void>;
+}>((set) => ({
+  submissions: [],
+  status: 'idle',
+  submitForm: async (data) => {
+    set({ status: 'submitting' });
+    // Business logic here
+    set({ status: 'success', submissions: [...get().submissions, data] });
+  },
+}));
+```
+
+### 5. **Feature types are self-contained**
+```typescript
+// features/form/types.ts - Feature-specific types
+export type ContactFormData = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  age: number;
+  message: string;
+};
+
+export type SubmissionStatus = 'idle' | 'submitting' | 'success' | 'error';
+```
+
+### 6. **Barrel export provides clean API**
+```typescript
+// features/form/index.ts - Public API
+export { useContactFormStore } from './model';
+export { ContactForm } from './ui';
+export type { ContactFormData, SubmissionStatus } from './types';
+```
+
+### Key Takeaways from This Flow:
+
+1. **✅ Clear ownership** - Everything contact-form-related is in `features/form/`
+2. **✅ Proper imports** - Page → Feature → Shared (never upward)
+3. **✅ Encapsulation** - Form state and logic are self-contained
+4. **✅ Reusability** - Shared UI components used without duplication
+5. **✅ Testability** - Each layer can be tested independently (89 tests!)
+6. **✅ Maintainability** - Can delete entire feature without breaking others
+
+This is FSD working as intended! 🎉
 
 ***
 
